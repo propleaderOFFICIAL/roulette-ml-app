@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const API_BASE =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? 'https://roulette-ml-api.onrender.com' : 'http://localhost:8000');
 
 export interface Spin {
   number: number;
