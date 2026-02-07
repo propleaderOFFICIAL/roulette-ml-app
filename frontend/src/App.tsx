@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
+  API_BASE,
   getSpins,
   getPredictions,
   getAdvancedPredictions,
@@ -86,7 +87,7 @@ function App() {
       setLoadingStats(false);
 
     } catch {
-      setErrorPreds('Impossibile connettersi al server. Avvia il backend (porta 8000).');
+      setErrorPreds(`Impossibile connettersi al server. Verifica che il backend sia online: ${API_BASE}`);
       setLoadingPreds(false);
       setLoadingAdvanced(false);
       setLoadingPatterns(false);

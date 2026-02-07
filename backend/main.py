@@ -31,13 +31,13 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# CORS: in produzione usa CORS_ORIGINS (es. https://tuo-frontend.onrender.com)
-_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,*")
-_origins_list = [o.strip() for o in _origins.split(",") if o.strip()]
+# CORS: allow_credentials=False permette allow_origins=["*"] (richiesto per frontend su altro dominio)
+_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
+_origins_list = [o.strip() for o in _origins_env.split(",") if o.strip()] if _origins_env else ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins_list,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
