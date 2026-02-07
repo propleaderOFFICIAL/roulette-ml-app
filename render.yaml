@@ -21,5 +21,9 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     # Aggiungi in Dashboard → Environment: VITE_API_URL = https://roulette-ml-api.onrender.com
     # (usa l’URL reale del tuo backend dopo il primo deploy)

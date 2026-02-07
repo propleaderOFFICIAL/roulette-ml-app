@@ -63,6 +63,18 @@ L’app sarà disponibile all’URL del frontend che Render assegna (es. `https:
 
 ---
 
+## Se vedi "404" o "Failed to load resource: 404"
+
+Il frontend è una SPA: tutte le route devono restituire `index.html`. Nel `render.yaml` è già configurata una **rewrite** (`/*` → `/index.html`). Dopo un nuovo deploy del Blueprint la regola viene applicata.
+
+Se il 404 persiste (es. dopo un deploy fatto prima di questa modifica), aggiungi la regola a mano:
+- Dashboard → **roulette-ml-frontend** → **Redirects/Rewrites**
+- **Add Rule**: Source `/*`, Destination `/index.html`, Action **Rewrite**
+
+Se il 404 riguarda un **URL dell’API** (es. `roulette-ml-api.onrender.com/...`), controlla che il backend sia avviato (piano free: può essere in sleep; apri l’URL del backend e attendi il risveglio).
+
+---
+
 ## Note importanti
 
 - **Piano free:** il backend dopo ~15 minuti di inattività va in sleep; la prima richiesta dopo il sleep può richiedere 30–60 secondi (cold start).
