@@ -232,10 +232,26 @@ export interface StatisticalAnalysisResponse {
   error?: string;
 }
 
+// Timeout lungo per cold start Render (piano free ~30-60 s)
+const API_TIMEOUT_MS = 70000;
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    clearTimeout(id);
+    return res;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
 // API Functions
 
 export async function addSpin(number: number): Promise<SpinResponse> {
-  const response = await fetch(`${API_BASE}/spins`, {
+  const response = await fetchWithTimeout(`${API_BASE}/spins`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ number }),
@@ -248,7 +264,7 @@ export async function addSpin(number: number): Promise<SpinResponse> {
 
 export async function getSpins(limit?: number): Promise<{ spins: Spin[]; total: number }> {
   const url = limit != null ? `${API_BASE}/spins?limit=${limit}` : `${API_BASE}/spins`;
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url);
   if (!response.ok) {
     throw new Error('Failed to fetch spins');
   }
@@ -256,7 +272,7 @@ export async function getSpins(limit?: number): Promise<{ spins: Spin[]; total: 
 }
 
 export async function clearSpins(): Promise<{ message: string; cleared_count: number }> {
-  const response = await fetch(`${API_BASE}/spins`, {
+  const response = await fetchWithTimeout(`${API_BASE}/spins`, {
     method: 'DELETE',
   });
   if (!response.ok) {
@@ -266,7 +282,7 @@ export async function clearSpins(): Promise<{ message: string; cleared_count: nu
 }
 
 export async function getPredictions(): Promise<PredictionsResponse> {
-  const response = await fetch(`${API_BASE}/predictions`);
+  const response = await fetchWithTimeout(`${API_BASE}/predictions`);
   if (!response.ok) {
     throw new Error('Failed to fetch predictions');
   }
@@ -274,7 +290,7 @@ export async function getPredictions(): Promise<PredictionsResponse> {
 }
 
 export async function getAdvancedPredictions(): Promise<AdvancedPredictionsResponse> {
-  const response = await fetch(`${API_BASE}/predictions/advanced`);
+  const response = await fetchWithTimeout(`${API_BASE}/predictions/advanced`);
   if (!response.ok) {
     throw new Error('Failed to fetch advanced predictions');
   }
@@ -282,7 +298,7 @@ export async function getAdvancedPredictions(): Promise<AdvancedPredictionsRespo
 }
 
 export async function getPatternAnalysis(): Promise<PatternAnalysisResponse> {
-  const response = await fetch(`${API_BASE}/analysis/patterns`);
+  const response = await fetchWithTimeout(`${API_BASE}/analysis/patterns`);
   if (!response.ok) {
     throw new Error('Failed to fetch pattern analysis');
   }
@@ -290,7 +306,7 @@ export async function getPatternAnalysis(): Promise<PatternAnalysisResponse> {
 }
 
 export async function getStatisticalAnalysis(): Promise<StatisticalAnalysisResponse> {
-  const response = await fetch(`${API_BASE}/analysis/statistics`);
+  const response = await fetchWithTimeout(`${API_BASE}/analysis/statistics`);
   if (!response.ok) {
     throw new Error('Failed to fetch statistical analysis');
   }
@@ -298,7 +314,7 @@ export async function getStatisticalAnalysis(): Promise<StatisticalAnalysisRespo
 }
 
 export async function getModelInfo(): Promise<{ ensemble: ModelInfo; legacy_predictor: { trained: boolean; window_size: number }; total_spins: number }> {
-  const response = await fetch(`${API_BASE}/models/info`);
+  const response = await fetchWithTimeout(`${API_BASE}/models/info`);
   if (!response.ok) {
     throw new Error('Failed to fetch model info');
   }

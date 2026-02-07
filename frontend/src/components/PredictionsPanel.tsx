@@ -4,6 +4,7 @@ interface PredictionsPanelProps {
   data: PredictionsResponse | null;
   loading: boolean;
   error: string | null;
+  onRetry?: () => void;
 }
 
 // Roulette number mappings
@@ -14,13 +15,18 @@ const getColor = (n: number): string => {
   return RED_NUMBERS.includes(n) ? 'red' : 'black';
 };
 
-export function PredictionsPanel({ data, loading, error }: PredictionsPanelProps) {
+export function PredictionsPanel({ data, loading, error, onRetry }: PredictionsPanelProps) {
   if (error) {
     return (
       <div className="ai-predictions-page">
         <h2 className="page-title">🤖 Predizioni AI</h2>
         <div className="error-card">
           <p className="error-message">{error}</p>
+          {onRetry && (
+            <button type="button" className="retry-button" onClick={onRetry}>
+              Riprova
+            </button>
+          )}
         </div>
       </div>
     );

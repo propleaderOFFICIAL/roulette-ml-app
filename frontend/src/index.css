@@ -600,6 +600,20 @@ h4 {
   text-align: center;
 }
 
+.retry-button {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 1rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  cursor: pointer;
+}
+.retry-button:hover {
+  filter: brightness(1.1);
+}
+
 /* ===========================================
    LOADING & ERROR STATES
    =========================================== */

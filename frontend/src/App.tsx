@@ -87,7 +87,7 @@ function App() {
       setLoadingStats(false);
 
     } catch {
-      setErrorPreds(`Impossibile connettersi al server. Verifica che il backend sia online: ${API_BASE}`);
+      setErrorPreds('Backend non raggiungibile. Su Render (piano free) il server può impiegare 30-60 secondi ad avviarsi. Attendi e clicca Riprova, oppure apri direttamente: ' + API_BASE);
       setLoadingPreds(false);
       setLoadingAdvanced(false);
       setLoadingPatterns(false);
@@ -200,6 +200,7 @@ function App() {
             data={predictions}
             loading={loadingPreds}
             error={errorPreds}
+            onRetry={refresh}
           />
         )}
 
