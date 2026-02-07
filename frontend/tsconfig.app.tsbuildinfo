@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/components/advancedpredictions.tsx","./src/components/patternanalysis.tsx","./src/components/predictionspanel.tsx","./src/components/spinhistory.tsx","./src/components/spininput.tsx","./src/components/statisticspanel.tsx"],"errors":true,"version":"5.9.3"}

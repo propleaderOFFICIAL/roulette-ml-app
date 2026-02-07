@@ -1,0 +1,25 @@
+# Render Blueprint: backend (Web Service) + frontend (Static Site)
+# Dopo il primo deploy: nella dashboard del servizio frontend aggiungi
+# la variabile d'ambiente VITE_API_URL = https://<nome-backend>.onrender.com
+# e rideploya il frontend.
+
+services:
+  # Backend API (Python FastAPI)
+  - type: web
+    name: roulette-ml-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+
+  # Frontend (React/Vite) – Static Site
+  - type: web
+    name: roulette-ml-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    # Aggiungi in Dashboard → Environment: VITE_API_URL = https://roulette-ml-api.onrender.com
+    # (usa l’URL reale del tuo backend dopo il primo deploy)
