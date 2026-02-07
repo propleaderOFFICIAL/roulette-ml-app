@@ -7,6 +7,8 @@ backend/data/spins.json
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/*.tsbuildinfo
+frontend/tsconfig.*.tsbuildinfo
 
 # IDE
 .idea/

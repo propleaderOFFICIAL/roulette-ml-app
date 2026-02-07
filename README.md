@@ -1,5 +1,7 @@
 # Roulette ML App
 
+Repository: [github.com/propleaderOFFICIAL/roulette-ml-app](https://github.com/propleaderOFFICIAL/roulette-ml-app)
+
 App React + backend Python (FastAPI) per registrare le uscite della **roulette europea** (numeri 0–36) e visualizzare probabilità **teoriche**, **empiriche** (frequenze dai dati) e **previsioni** da un modello di machine learning.
 
 ## Requisiti
