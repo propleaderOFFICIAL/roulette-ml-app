@@ -1,6 +1,8 @@
-export const API_BASE =
+const _apiBase =
   import.meta.env.VITE_API_URL ??
   (import.meta.env.PROD ? 'https://roulette-ml-api.onrender.com' : 'http://localhost:8000');
+/** URL base senza trailing slash per evitare doppio slash (es. ...com//spins → 404) */
+export const API_BASE = typeof _apiBase === 'string' ? _apiBase.replace(/\/$/, '') : _apiBase;
 
 export interface Spin {
   number: number;
