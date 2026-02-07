@@ -31,15 +31,19 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# CORS: allow_credentials=False permette allow_origins=["*"] (richiesto per frontend su altro dominio)
+# CORS: consenti richieste dal frontend (qualsiasi origine); allow_credentials=False per usare "*"
 _origins_env = os.environ.get("CORS_ORIGINS", "").strip()
-_origins_list = [o.strip() for o in _origins_env.split(",") if o.strip()] if _origins_env else ["*"]
+if _origins_env:
+    _origins_list = [o.strip() for o in _origins_env.split(",") if o.strip()]
+else:
+    _origins_list = ["*"]  # produzione: frontend su altro dominio (es. Render)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins_list,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # In-memory storage; optionally persist to data/spins.json
