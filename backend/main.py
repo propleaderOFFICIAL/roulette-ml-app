@@ -12,8 +12,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 import json
-from typing import Optional
+from typing import Optional, Any
 
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -22,7 +23,7 @@ import roulette
 from model import get_predictor
 from ensemble_model import get_ensemble_predictor
 from pattern_detector import get_pattern_detector
-from statistical_engine import get_statistical_engine
+from statistical_engine import get_statistical_engine, get_wheel_clustering_analyzer
 from advanced_features import get_feature_extractor
 
 app = FastAPI(
@@ -175,6 +176,48 @@ async def clear_spins():
     }
 
 
+class DeleteSpinRequest(BaseModel):
+    timestamp: str
+
+
+@app.delete("/spins/one")
+async def delete_spin(req: DeleteSpinRequest):
+    """Delete a specific spin by timestamp and retrain models."""
+    global spins_store
+    
+    initial_count = len(spins_store)
+    spins_store = [s for s in spins_store if s.get("timestamp") != req.timestamp]
+    final_count = len(spins_store)
+    
+    if initial_count == final_count:
+        raise HTTPException(status_code=404, detail="Spin not found")
+        
+    save_spins()
+    
+    # Retrain predictors with updated data
+    numbers = [s["number"] for s in spins_store]
+    
+    predictor = get_predictor()
+    # Reset and retrain
+    predictor._trained = False
+    if len(numbers) >= 15:
+        predictor.ensure_trained(numbers)
+        
+    ensemble = get_ensemble_predictor()
+    # Reset and retrain
+    ensemble._trained = False
+    for model in ensemble.models:
+        model._trained = False # Force retrain of sub-models
+    
+    if len(numbers) >= 30:
+        ensemble.ensure_trained(numbers)
+
+    return {
+        "message": "Spin deleted",
+        "remaining_spins": final_count
+    }
+
+
 @app.get("/predictions")
 async def get_predictions():
     """Return theoretical, empirical, and basic ML predictions."""
@@ -298,6 +341,23 @@ async def get_pattern_analysis():
     }
 
 
+def _to_native(obj: Any) -> Any:
+    """Convert numpy types to native Python so FastAPI JSON encoding works."""
+    if isinstance(obj, dict):
+        return {k: _to_native(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_native(x) for x in obj]
+    if isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    if isinstance(obj, (np.floating, np.float64, np.float32)):
+        return float(obj)
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
+
 @app.get("/analysis/statistics")
 async def get_statistical_analysis():
     """
@@ -321,10 +381,10 @@ async def get_statistical_analysis():
     
     analysis = engine.get_full_analysis(numbers)
     
-    return {
+    return _to_native({
         "statistics": analysis,
         "total_spins": len(numbers),
-    }
+    })
 
 
 @app.get("/analysis/features")
@@ -357,6 +417,34 @@ async def get_feature_analysis():
         "streaks": streaks,
         "total_spins": len(numbers),
     }
+
+
+@app.get("/analysis/wheel-clustering")
+async def get_wheel_clustering():
+    """
+    Get wheel clustering analysis for bias detection.
+    
+    Includes:
+    - Sector clustering (physical wheel zones)
+    - Suspicious number pairs
+    - Hot/cold wheel zones
+    - Overall wheel bias assessment
+    """
+    numbers = [s["number"] for s in spins_store]
+    analyzer = get_wheel_clustering_analyzer()
+    
+    if len(numbers) < 30:
+        return {
+            "error": "Need at least 30 spins for wheel clustering analysis",
+            "current_spins": len(numbers),
+        }
+    
+    analysis = analyzer.get_full_clustering_analysis(numbers)
+    
+    return _to_native({
+        "wheel_analysis": analysis,
+        "total_spins": len(numbers),
+    })
 
 
 @app.get("/models/info")

@@ -50,11 +50,11 @@ class RoulettePredictor:
             return False
         X_color, y_color = _build_sequences(numbers, self.window_size)
         y_color_enc = self.color_encoder.transform(y_color)
-        self.color_model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=500, random_state=42)
+        self.color_model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=1500, random_state=42)
         self.color_model.fit(X_color, y_color_enc)
 
         X_num, y_num = _build_sequences_number(numbers, self.window_size)
-        self.number_model = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500, random_state=42)
+        self.number_model = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=1500, random_state=42)
         self.number_model.fit(X_num, y_num)
         self._trained = True
         return True

@@ -489,8 +489,259 @@ class StatisticalEngine:
         }
 
 
-# Singleton
+class WheelClusteringAnalyzer:
+    """
+    Clustering-based analysis to detect wheel biases and anomalies.
+    
+    Uses unsupervised learning to:
+    - Detect numbers that appear together (sector clustering)
+    - Identify anomalous patterns suggesting wheel defects
+    - Find number groupings that deviate from random
+    """
+    
+    # European roulette wheel layout (physical order on wheel)
+    WHEEL_ORDER = [
+        0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
+        5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+    ]
+    
+    def __init__(self):
+        # Build position lookup: number -> position on wheel
+        self.number_to_position = {
+            num: idx for idx, num in enumerate(self.WHEEL_ORDER)
+        }
+        
+    def get_wheel_distance(self, num1: int, num2: int) -> int:
+        """Calculate the distance between two numbers on the physical wheel."""
+        pos1 = self.number_to_position.get(num1, 0)
+        pos2 = self.number_to_position.get(num2, 0)
+        
+        # Wheel is circular, take minimum distance
+        forward = abs(pos2 - pos1)
+        backward = 37 - forward
+        return min(forward, backward)
+    
+    def analyze_sector_clustering(self, numbers: List[int]) -> Dict[str, Any]:
+        """
+        Analyze if numbers cluster in specific wheel sectors.
+        
+        A biased wheel might produce numbers from the same physical
+        sector more often than expected.
+        """
+        if len(numbers) < 30:
+            return {'status': 'insufficient_data', 'min_required': 30}
+        
+        # Calculate consecutive wheel distances
+        distances = []
+        for i in range(1, len(numbers)):
+            dist = self.get_wheel_distance(numbers[i-1], numbers[i])
+            distances.append(dist)
+        
+        # If consecutive numbers are often close on wheel = possible bias
+        avg_distance = np.mean(distances)
+        expected_avg = 37 / 4  # ~9.25 for random distribution
+        
+        # Standard deviation of distances
+        std_distance = np.std(distances)
+        
+        # Cluster score: how much do numbers cluster vs random
+        # Lower than expected = clustering (bias)
+        cluster_score = avg_distance / expected_avg
+        
+        # Find "hot zones" on wheel (sectors with many hits)
+        position_counts = Counter()
+        for num in numbers:
+            pos = self.number_to_position.get(num, 0)
+            # Group into 6 sectors of ~6 numbers each
+            sector = pos // 6
+            position_counts[sector] += 1
+        
+        # Check if any sector is significantly overrepresented
+        expected_per_sector = len(numbers) / 6
+        hot_sectors = []
+        cold_sectors = []
+        
+        for sector in range(6):
+            count = position_counts.get(sector, 0)
+            deviation = (count - expected_per_sector) / expected_per_sector
+            if deviation > 0.3:  # 30% above expected
+                hot_sectors.append({
+                    'sector': sector,
+                    'count': count,
+                    'deviation': f"+{deviation*100:.1f}%"
+                })
+            elif deviation < -0.3:  # 30% below expected
+                cold_sectors.append({
+                    'sector': sector,
+                    'count': count,
+                    'deviation': f"{deviation*100:.1f}%"
+                })
+        
+        # Interpretation
+        if cluster_score < 0.7:
+            interpretation = "Strong clustering detected - possible wheel bias"
+            bias_likely = True
+        elif cluster_score < 0.85:
+            interpretation = "Moderate clustering - monitor for patterns"
+            bias_likely = False
+        else:
+            interpretation = "Normal distribution - no significant clustering"
+            bias_likely = False
+        
+        return {
+            'cluster_score': float(cluster_score),
+            'avg_wheel_distance': float(avg_distance),
+            'expected_distance': float(expected_avg),
+            'distance_std': float(std_distance),
+            'hot_sectors': hot_sectors,
+            'cold_sectors': cold_sectors,
+            'bias_likely': bias_likely,
+            'interpretation': interpretation,
+            'sample_size': len(numbers)
+        }
+    
+    def detect_number_pairs(self, numbers: List[int], 
+                           min_occurrences: int = 5) -> Dict[str, Any]:
+        """
+        Detect pairs of numbers that appear consecutively more often than expected.
+        
+        This can indicate wheel defects where certain number transitions
+        are more likely due to physical imperfections.
+        """
+        if len(numbers) < 50:
+            return {'status': 'insufficient_data'}
+        
+        # Count pair occurrences
+        pair_counts = Counter()
+        for i in range(1, len(numbers)):
+            pair = (numbers[i-1], numbers[i])
+            pair_counts[pair] += 1
+        
+        # Expected frequency for any pair
+        expected = len(numbers) / (37 * 37)
+        
+        # Find overrepresented pairs
+        suspicious_pairs = []
+        for pair, count in pair_counts.most_common(20):
+            if count >= min_occurrences:
+                wheel_dist = self.get_wheel_distance(pair[0], pair[1])
+                significance = count / max(expected, 0.1)
+                suspicious_pairs.append({
+                    'from': pair[0],
+                    'to': pair[1],
+                    'count': count,
+                    'wheel_distance': wheel_dist,
+                    'significance': f"{significance:.1f}x expected"
+                })
+        
+        return {
+            'suspicious_pairs': suspicious_pairs[:10],
+            'total_pairs_analyzed': len(pair_counts),
+            'sample_size': len(numbers)
+        }
+    
+    def detect_sleeper_anomalies(self, numbers: List[int]) -> Dict[str, Any]:
+        """
+        Detect anomalies in sleeper patterns (numbers not appearing).
+        
+        A biased wheel might have some numbers that rarely appear.
+        """
+        if len(numbers) < 100:
+            return {'status': 'insufficient_data', 'min_required': 100}
+        
+        counts = Counter(numbers)
+        
+        # Expected count for each number
+        expected = len(numbers) / 37
+        
+        # Find significantly underrepresented numbers
+        cold_numbers = []
+        hot_numbers = []
+        
+        for num in range(37):
+            count = counts.get(num, 0)
+            deviation = (count - expected) / max(expected, 1)
+            
+            if count < expected * 0.3:  # Less than 30% of expected
+                cold_numbers.append({
+                    'number': num,
+                    'count': count,
+                    'expected': round(expected, 1),
+                    'wheel_position': self.number_to_position.get(num, 0)
+                })
+            elif count > expected * 2:  # More than 200% of expected
+                hot_numbers.append({
+                    'number': num,
+                    'count': count,
+                    'expected': round(expected, 1),
+                    'wheel_position': self.number_to_position.get(num, 0)
+                })
+        
+        # Check if cold/hot numbers are clustered on wheel
+        cold_positions = [self.number_to_position.get(n['number'], 0) for n in cold_numbers]
+        hot_positions = [self.number_to_position.get(n['number'], 0) for n in hot_numbers]
+        
+        wheel_bias_indicator = False
+        if len(cold_positions) >= 2 or len(hot_positions) >= 2:
+            # Check if they're close on wheel
+            if len(cold_positions) >= 2:
+                cold_spread = max(cold_positions) - min(cold_positions)
+                if cold_spread < 10:  # Clustered cold zone
+                    wheel_bias_indicator = True
+            if len(hot_positions) >= 2:
+                hot_spread = max(hot_positions) - min(hot_positions)
+                if hot_spread < 10:  # Clustered hot zone
+                    wheel_bias_indicator = True
+        
+        return {
+            'cold_numbers': cold_numbers,
+            'hot_numbers': hot_numbers,
+            'wheel_bias_indicator': wheel_bias_indicator,
+            'sample_size': len(numbers),
+            'expected_per_number': round(expected, 1)
+        }
+    
+    def get_full_clustering_analysis(self, numbers: List[int]) -> Dict[str, Any]:
+        """Run all clustering analyses and return comprehensive results."""
+        sector_analysis = self.analyze_sector_clustering(numbers)
+        pair_analysis = self.detect_number_pairs(numbers)
+        sleeper_analysis = self.detect_sleeper_anomalies(numbers)
+        
+        # Overall wheel health assessment
+        bias_indicators = 0
+        if sector_analysis.get('bias_likely', False):
+            bias_indicators += 2
+        if len(sector_analysis.get('hot_sectors', [])) >= 2:
+            bias_indicators += 1
+        if sleeper_analysis.get('wheel_bias_indicator', False):
+            bias_indicators += 2
+        if len(sleeper_analysis.get('hot_numbers', [])) >= 3:
+            bias_indicators += 1
+        
+        if bias_indicators >= 4:
+            wheel_assessment = "High probability of wheel bias - exploit patterns"
+            exploitable = True
+        elif bias_indicators >= 2:
+            wheel_assessment = "Possible minor bias - continue monitoring"
+            exploitable = False
+        else:
+            wheel_assessment = "Wheel appears fair and random"
+            exploitable = False
+        
+        return {
+            'sector_clustering': sector_analysis,
+            'pair_analysis': pair_analysis,
+            'sleeper_anomalies': sleeper_analysis,
+            'wheel_assessment': wheel_assessment,
+            'bias_indicators': bias_indicators,
+            'exploitable': exploitable,
+            'total_spins_analyzed': len(numbers)
+        }
+
+
+# Singletons
 _statistical_engine: Optional[StatisticalEngine] = None
+_wheel_clustering: Optional[WheelClusteringAnalyzer] = None
 
 
 def get_statistical_engine() -> StatisticalEngine:
@@ -498,3 +749,10 @@ def get_statistical_engine() -> StatisticalEngine:
     if _statistical_engine is None:
         _statistical_engine = StatisticalEngine()
     return _statistical_engine
+
+
+def get_wheel_clustering_analyzer() -> WheelClusteringAnalyzer:
+    global _wheel_clustering
+    if _wheel_clustering is None:
+        _wheel_clustering = WheelClusteringAnalyzer()
+    return _wheel_clustering

@@ -56,6 +56,7 @@ export interface AdvancedColorPrediction {
 export interface AdvancedNumberPrediction {
   ensemble: Array<{ number: number; probability: number }>;
   confidence: number;
+  agreement: number;
   models: Record<string, Array<{ number: number; probability: number }>>;
   weights: Record<string, number>;
 }
@@ -76,6 +77,7 @@ export interface BettingAreaItem {
   probabilities: Record<string, number>;
   prediction: string;
   confidence: number;
+  agreement: number;
 }
 
 export interface BettingAreaPredictions {
@@ -283,6 +285,18 @@ export async function clearSpins(): Promise<{ message: string; cleared_count: nu
   return response.json();
 }
 
+export async function deleteSpin(timestamp: string): Promise<{ message: string; remaining_spins: number }> {
+  const response = await fetchWithTimeout(`${API_BASE}/spins/one`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timestamp }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete spin');
+  }
+  return response.json();
+}
+
 export async function getPredictions(): Promise<PredictionsResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/predictions`);
   if (!response.ok) {
@@ -319,6 +333,68 @@ export async function getModelInfo(): Promise<{ ensemble: ModelInfo; legacy_pred
   const response = await fetchWithTimeout(`${API_BASE}/models/info`);
   if (!response.ok) {
     throw new Error('Failed to fetch model info');
+  }
+  return response.json();
+}
+
+// Wheel Clustering Analysis Types
+export interface SectorClusteringResult {
+  cluster_score: number;
+  avg_wheel_distance: number;
+  expected_distance: number;
+  distance_std: number;
+  hot_sectors: Array<{ sector: number; count: number; deviation: string }>;
+  cold_sectors: Array<{ sector: number; count: number; deviation: string }>;
+  bias_likely: boolean;
+  interpretation: string;
+  sample_size: number;
+  status?: string;
+}
+
+export interface SuspiciousPair {
+  from: number;
+  to: number;
+  count: number;
+  wheel_distance: number;
+  significance: string;
+}
+
+export interface PairAnalysisResult {
+  suspicious_pairs: SuspiciousPair[];
+  total_pairs_analyzed: number;
+  sample_size: number;
+  status?: string;
+}
+
+export interface SleeperAnomaliesResult {
+  cold_numbers: Array<{ number: number; count: number; expected: number; wheel_position: number }>;
+  hot_numbers: Array<{ number: number; count: number; expected: number; wheel_position: number }>;
+  wheel_bias_indicator: boolean;
+  sample_size: number;
+  expected_per_number: number;
+  status?: string;
+}
+
+export interface WheelClusteringAnalysis {
+  sector_clustering: SectorClusteringResult;
+  pair_analysis: PairAnalysisResult;
+  sleeper_anomalies: SleeperAnomaliesResult;
+  wheel_assessment: string;
+  bias_indicators: number;
+  exploitable: boolean;
+  total_spins_analyzed: number;
+}
+
+export interface WheelClusteringResponse {
+  wheel_analysis: WheelClusteringAnalysis;
+  total_spins: number;
+  error?: string;
+}
+
+export async function getWheelClustering(): Promise<WheelClusteringResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/analysis/wheel-clustering`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch wheel clustering analysis');
   }
   return response.json();
 }

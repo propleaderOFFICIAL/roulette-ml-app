@@ -9,6 +9,22 @@ App React + backend Python (FastAPI) per registrare le uscite della **roulette e
 - **Backend**: Python 3.10+ (consigliato 3.11)
 - **Frontend**: Node.js 18+ e npm
 
+### macOS: XGBoost e OpenMP
+
+Su Mac, XGBoost richiede **libomp** (OpenMP). Per installare tutto in un colpo solo:
+
+```bash
+# Dalla root del progetto roulette-ml-app
+./scripts/setup-mac.sh
+```
+
+Lo script installa libomp con Homebrew (se non presente), crea il venv e installa le dipendenze incluso XGBoost. Se non usi lo script:
+
+```bash
+brew install libomp
+cd backend && source venv/bin/activate && pip install -r requirements.txt
+```
+
 ## Avvio
 
 ### 1. Backend (porta 8000)

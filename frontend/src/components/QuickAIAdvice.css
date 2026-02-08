@@ -1,0 +1,268 @@
+/* QuickAIAdvice.css - Always visible AI summary */
+
+.quick-ai-container {
+    background: linear-gradient(145deg, #1a1a24, #0f0f15);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+}
+
+.quick-ai-loading,
+.quick-ai-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.quick-ai-loading .icon,
+.quick-ai-empty .icon {
+    font-size: 1.5rem;
+}
+
+.spinner.small {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+}
+
+/* === MAIN ADVICE PILL === */
+.main-advice-pill {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.main-advice-pill::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.main-advice-pill.urgency-high {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.03));
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.main-advice-pill.urgency-high::before {
+    background: #ef4444;
+    box-shadow: 0 0 15px #ef4444;
+}
+
+.main-advice-pill.urgency-medium {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.03));
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.main-advice-pill.urgency-medium::before {
+    background: #f59e0b;
+    box-shadow: 0 0 15px #f59e0b;
+}
+
+.main-advice-pill.urgency-low {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.03));
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.main-advice-pill.urgency-low::before {
+    background: #22c55e;
+}
+
+.pill-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.pill-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.pill-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.pill-action {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.pill-urgency-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* === BEST BETS ROW === */
+.best-bets-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.bets-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.bets-pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.bet-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.bet-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bet-pill.number {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05));
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.bet-pill.color {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.bet-pill.sector {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.05));
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.bet-pill.pattern {
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(244, 114, 182, 0.05));
+    border-color: rgba(244, 114, 182, 0.4);
+}
+
+.bet-icon {
+    font-size: 0.9rem;
+}
+
+.bet-text {
+    font-weight: 600;
+}
+
+.bet-prob {
+    font-size: 0.7rem;
+    color: #a78bfa;
+    margin-left: 0.25rem;
+}
+
+/* === SECONDARY ADVICE === */
+.secondary-advice-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.secondary-advice-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.secondary-advice-card.urgency-high {
+    border-left: 3px solid #ef4444;
+}
+
+.secondary-advice-card.urgency-medium {
+    border-left: 3px solid #f59e0b;
+}
+
+.secondary-advice-card.urgency-low {
+    border-left: 3px solid #22c55e;
+}
+
+.secondary-advice-card .adv-icon {
+    font-size: 1.25rem;
+}
+
+.secondary-advice-card .adv-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.secondary-advice-card .adv-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.secondary-advice-card .adv-action {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 600px) {
+    .main-advice-pill {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+
+    .pill-urgency-badge {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+
+    .best-bets-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .secondary-advice-row {
+        grid-template-columns: 1fr;
+    }
+}
