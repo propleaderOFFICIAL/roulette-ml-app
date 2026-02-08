@@ -79,4 +79,4 @@ Se il 404 riguarda un **URL dell’API** (es. `roulette-ml-api.onrender.com/...`
 
 - **Piano free:** il backend dopo ~15 minuti di inattività va in sleep; la prima richiesta dopo il sleep può richiedere 30–60 secondi (cold start).
 - **Dati:** su Render il filesystem è effimero. I dati delle uscite (es. `data/spins.json`) si perdono a ogni redeploy o riavvio. Per tenerli bisognerebbe usare un database (es. Postgres su Render) o uno storage esterno.
-- **CORS:** il backend è già configurato per accettare richieste da qualsiasi origine. Se vuoi limitare al solo frontend, nel servizio backend imposta la variabile d’ambiente `CORS_ORIGINS` con l’URL del frontend (es. `https://roulette-ml-frontend.onrender.com`).
+- **CORS:** il backend accetta richieste da qualsiasi origine se `CORS_ORIGINS` non è impostata. Se il frontend non si connette, in Render → roulette-ml-api → Environment verifica che `CORS_ORIGINS` non ci sia o sia vuota. Se vuoi limitare al solo frontend, nel servizio backend imposta la variabile d’ambiente `CORS_ORIGINS` con l’URL del frontend (es. `https://roulette-ml-frontend.onrender.com`).

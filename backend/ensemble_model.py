@@ -22,9 +22,13 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import cross_val_score
 from sklearn.calibration import CalibratedClassifierCV
 
-# XGBoost is optional
-HAS_XGBOOST = False
-xgb = None
+# XGBoost is optional (richiede libomp su macOS: brew install libomp)
+try:
+    import xgboost as xgb
+    HAS_XGBOOST = True
+except Exception:
+    HAS_XGBOOST = False
+    xgb = None
 
 from roulette import number_to_color, TOTAL_NUMBERS
 from advanced_features import get_feature_extractor, AdvancedFeatureExtractor
@@ -125,34 +129,50 @@ class DeepNeuralNetworkPredictor(BasePredictor):
         try:
             X_scaled = self.scaler.fit_transform(X)
             y_color_enc = self.color_encoder.transform(y_color)
-            
-            # Color model - deeper architecture
+            n_samples = len(X_scaled)
+            # cv ridotto se pochi dati (CalibratedClassifierCV richiede abbastanza campioni per fold)
+            cv_cal = min(3, max(2, n_samples // 20))
+
+            # Color model - con calibrazione se abbastanza dati, altrimenti MLP diretto
             base_color = MLPClassifier(
                 hidden_layer_sizes=(128, 64, 32),
                 activation='relu',
                 solver='adam',
-                max_iter=1000,
+                max_iter=800,
                 early_stopping=True,
-                validation_fraction=0.1,
+                validation_fraction=0.12,
                 random_state=42,
-                alpha=0.001  # L2 regularization
+                alpha=0.001,
             )
-            self.color_model = CalibratedClassifierCV(base_color, cv=3)
-            self.color_model.fit(X_scaled, y_color_enc)
-            
-            # Number model - even deeper for 37-class classification
+            if n_samples >= 50 and cv_cal >= 2:
+                try:
+                    self.color_model = CalibratedClassifierCV(base_color, cv=cv_cal)
+                    self.color_model.fit(X_scaled, y_color_enc)
+                except Exception:
+                    base_fallback = MLPClassifier(
+                        hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam',
+                        max_iter=800, early_stopping=True, validation_fraction=0.12,
+                        random_state=42, alpha=0.001,
+                    )
+                    self.color_model = base_fallback
+                    self.color_model.fit(X_scaled, y_color_enc)
+            else:
+                self.color_model = base_color
+                self.color_model.fit(X_scaled, y_color_enc)
+
+            # Number model (no calibration per 37 classi con dati limitati)
             self.number_model = MLPClassifier(
                 hidden_layer_sizes=(256, 128, 64, 32),
                 activation='relu',
                 solver='adam',
-                max_iter=1000,
+                max_iter=800,
                 early_stopping=True,
-                validation_fraction=0.1,
+                validation_fraction=0.12,
                 random_state=42,
-                alpha=0.001
+                alpha=0.001,
             )
             self.number_model.fit(X_scaled, y_number)
-            
+
             self._trained = True
             return True
         except Exception as e:

@@ -48,6 +48,23 @@ Poi apri [http://localhost:5173](http://localhost:5173).
 
 I dati delle uscite sono salvati in `backend/data/spins.json` e restano tra un avvio e l’altro del backend.
 
+## Script: caricare 110 uscite di test
+
+Nella cartella `scripts/` trovi due script per caricare 110 numeri casuali (seed fisso) nell’API:
+
+- **Node:** `node scripts/load-50-spins.mjs [URL]`  
+- **Python:** `python scripts/load-50-spins.py [URL]`
+
+Se non passi l’URL viene usato `http://localhost:8000`. Per l’API su Render:
+
+```bash
+node scripts/load-50-spins.mjs https://roulette-ml-api.onrender.com
+# oppure
+python scripts/load-50-spins.py https://roulette-ml-api.onrender.com
+```
+
+Assicurati che il backend sia avviato (in locale o già sveglio su Render).
+
 ## Nota importante
 
 Nella roulette reale ogni colpo è **indipendente**: le probabilità teoriche non cambiano in base alla storia. Le “previsioni” del modello e le frequenze empiriche sono fornite a scopo **didattico e di intrattenimento**, non come strategia per battere il banco.
