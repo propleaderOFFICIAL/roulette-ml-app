@@ -130,44 +130,33 @@ class DeepNeuralNetworkPredictor(BasePredictor):
             X_scaled = self.scaler.fit_transform(X)
             y_color_enc = self.color_encoder.transform(y_color)
             n_samples = len(X_scaled)
-            # cv ridotto se pochi dati (CalibratedClassifierCV richiede abbastanza campioni per fold)
-            cv_cal = min(3, max(2, n_samples // 20))
+            # Con ~100 campioni usiamo reti più piccole e più iterazioni per far convergere
+            if n_samples < 80:
+                hidden_color, hidden_num = (64, 32), (128, 64, 32)
+            else:
+                hidden_color, hidden_num = (128, 64, 32), (256, 128, 64, 32)
 
-            # Color model - con calibrazione se abbastanza dati, altrimenti MLP diretto
-            base_color = MLPClassifier(
-                hidden_layer_sizes=(128, 64, 32),
+            # Color model: solo MLP (niente calibrazione per evitare errori con pochi dati)
+            self.color_model = MLPClassifier(
+                hidden_layer_sizes=hidden_color,
                 activation='relu',
                 solver='adam',
-                max_iter=800,
+                max_iter=1500,
                 early_stopping=True,
-                validation_fraction=0.12,
+                validation_fraction=0.15,
                 random_state=42,
                 alpha=0.001,
             )
-            if n_samples >= 50 and cv_cal >= 2:
-                try:
-                    self.color_model = CalibratedClassifierCV(base_color, cv=cv_cal)
-                    self.color_model.fit(X_scaled, y_color_enc)
-                except Exception:
-                    base_fallback = MLPClassifier(
-                        hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam',
-                        max_iter=800, early_stopping=True, validation_fraction=0.12,
-                        random_state=42, alpha=0.001,
-                    )
-                    self.color_model = base_fallback
-                    self.color_model.fit(X_scaled, y_color_enc)
-            else:
-                self.color_model = base_color
-                self.color_model.fit(X_scaled, y_color_enc)
+            self.color_model.fit(X_scaled, y_color_enc)
 
-            # Number model (no calibration per 37 classi con dati limitati)
+            # Number model
             self.number_model = MLPClassifier(
-                hidden_layer_sizes=(256, 128, 64, 32),
+                hidden_layer_sizes=hidden_num,
                 activation='relu',
                 solver='adam',
-                max_iter=800,
+                max_iter=1500,
                 early_stopping=True,
-                validation_fraction=0.12,
+                validation_fraction=0.15,
                 random_state=42,
                 alpha=0.001,
             )
