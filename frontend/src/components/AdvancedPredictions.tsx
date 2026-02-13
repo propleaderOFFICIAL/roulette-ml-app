@@ -1,7 +1,8 @@
-import { AdvancedPredictionsResponse } from '../api';
+import { AdvancedPredictionsResponse, PatternAnalysisResponse } from '../api';
 
 interface Props {
     data: AdvancedPredictionsResponse | null;
+    patternData: PatternAnalysisResponse | null;
     loading: boolean;
     error: string | null;
     onRetry?: () => void;
@@ -13,7 +14,9 @@ const colorMap: Record<string, string> = {
     green: '#22c55e',
 };
 
-export function AdvancedPredictions({ data, loading, error, onRetry }: Props) {
+const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+export function AdvancedPredictions({ data, patternData, loading, error, onRetry }: Props) {
     if (loading) {
         return (
             <div className="card loading-state">
@@ -107,7 +110,7 @@ export function AdvancedPredictions({ data, loading, error, onRetry }: Props) {
                         </div>
 
                         <div className="capsule-list">
-                            {['red', 'black', 'green'].map(color => {
+                            {['red', 'black'].map(color => {
                                 const prob = data.color!.ensemble[color] || 0;
                                 const isBlack = color === 'black';
                                 const colorCode = colorMap[color];
@@ -362,6 +365,54 @@ export function AdvancedPredictions({ data, loading, error, onRetry }: Props) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Sectors */}
+                    {data.betting_areas.sector && (
+                        <div className="betting-predictions-grid" style={{ marginTop: '1rem' }}>
+                            <div className="betting-prediction-card" style={{ gridColumn: '1 / -1' }}>
+                                <h4>🎡 Settori della Ruota</h4>
+                                <div className="prediction-badge">
+                                    🎯 {data.betting_areas.sector.prediction}
+                                </div>
+                                <div className="ensemble-result" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                                    <div className="agreement-badge">
+                                        <span>Accordo: </span>
+                                        <strong>{(data.betting_areas.sector.agreement * 100).toFixed(0)}%</strong>
+                                    </div>
+                                </div>
+                                <div className="confidence-mini" style={{ justifyContent: 'center', marginTop: '0.5rem' }}>
+                                    Confidenza: {(data.betting_areas.sector.confidence * 100).toFixed(1)}%
+                                </div>
+                                <div className="betting-probs">
+                                    {Object.entries(data.betting_areas.sector.probabilities).map(([name, prob]) => {
+                                        const sectorColors: Record<string, string> = {
+                                            'Voisins': '#06b6d4',
+                                            'Tiers': '#8b5cf6',
+                                            'Orphelins': '#f59e0b',
+                                        };
+                                        const barColor = sectorColors[name] || '#64748b';
+                                        return (
+                                            <div key={name} className="prob-row-capsule" style={{ gridTemplateColumns: '24px 80px 1fr 40px', padding: '0.5rem 0.8rem' }}>
+                                                <div className="capsule-dot" style={{ backgroundColor: barColor, color: `${barColor}80` }} />
+                                                <div className="capsule-label" style={{ fontSize: '0.7rem' }}>{name}</div>
+                                                <div className="capsule-bar-track">
+                                                    <div
+                                                        className="capsule-bar-fill"
+                                                        style={{
+                                                            width: `${prob * 100}%`,
+                                                            backgroundColor: barColor,
+                                                            color: `${barColor}60`
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="capsule-value" style={{ fontSize: '0.8rem' }}>{(prob * 100).toFixed(0)}%</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {data.betting_areas.zero_probability > 0.05 && (
                         <div className="zero-warning">

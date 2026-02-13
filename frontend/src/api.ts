@@ -85,6 +85,7 @@ export interface BettingAreaPredictions {
   column: BettingAreaItem;
   high_low: BettingAreaItem;
   parity: BettingAreaItem;
+  sector: BettingAreaItem;
   zero_probability: number;
   source: string;
 }
@@ -159,6 +160,20 @@ export interface PatternAnalysis {
   };
   alerts: PatternAlert[];
   alert_count: number;
+  pattern_predictions?: PatternPrediction[];
+}
+
+export interface PatternPrediction {
+  type: 'number' | 'streak' | 'sector' | 'category';
+  value: string | number;
+  label: string;
+  probability: number;
+  overdue_boost: number;
+  base_probability: number;
+  sources: string[];
+  source_count: number;
+  agreement: number;
+  description: string;
 }
 
 export interface PatternAnalysisResponse {

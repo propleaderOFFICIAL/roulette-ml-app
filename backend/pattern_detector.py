@@ -378,6 +378,11 @@ class PatternDetector:
                     'message': f"Number {sleeper['number']} hasn't appeared in {sleeper['gap']} spins"
                 })
         
+        # Generate pattern-based predictions with agreement
+        pattern_predictions = self._generate_pattern_predictions(
+            numbers, hot_cold, sleepers, streaks, sector_bias
+        )
+        
         return {
             'hot_cold': hot_cold,
             'sleepers': sleepers,
@@ -386,7 +391,255 @@ class PatternDetector:
             'alerts': all_alerts,
             'alert_count': len(all_alerts),
             'analyzed_spins': len(numbers),
+            'pattern_predictions': pattern_predictions,
         }
+    
+    def _generate_pattern_predictions(
+        self,
+        numbers: list[int],
+        hot_cold: Dict,
+        sleepers: Dict,
+        streaks: Dict,
+        sector_bias: Dict,
+    ) -> list[Dict[str, Any]]:
+        """
+        Generate concrete predictions from all pattern sources.
+        
+        Each prediction has:
+        - type: 'number', 'color', 'sector', 'area'
+        - value: the predicted value
+        - probability: base probability from pattern analysis
+        - overdue_boost: extra probability from gap analysis
+        - final_probability: probability + overdue_boost
+        - sources: list of pattern sources that agree
+        - agreement: len(sources) / total_sources
+        - description: human-readable description
+        """
+        # Collect all number-level predictions from different sources
+        number_scores: Dict[int, Dict] = {}
+        TOTAL_SOURCES = 4  # hot, sleeper, streak_pattern, sector
+        
+        # --- Source 1: Hot Numbers ---
+        for hot in hot_cold.get('hot', []):
+            n = hot['number']
+            if n not in number_scores:
+                number_scores[n] = {'sources': [], 'base_prob': 0, 'overdue_boost': 0}
+            # Probability based on deviation (higher deviation = more likely to continue)
+            prob = min(0.15 + hot['deviation'] * 0.02, 0.5)
+            number_scores[n]['base_prob'] = max(number_scores[n]['base_prob'], prob)
+            number_scores[n]['sources'].append('🔥 Numero Caldo')
+        
+        # --- Source 2: Sleepers (with overdue boost!) ---
+        expected_gap = TOTAL_NUMBERS  # 37 spins expected gap
+        for sleeper in sleepers.get('sleepers', []):
+            n = sleeper['number']
+            if n not in number_scores:
+                number_scores[n] = {'sources': [], 'base_prob': 0, 'overdue_boost': 0}
+            
+            gap = sleeper['gap']
+            # Base probability for sleeper
+            base = 1.0 / TOTAL_NUMBERS  # ~2.7%
+            
+            # OVERDUE BOOST: the longer a number is absent, the higher the boost
+            # Using a logarithmic curve so it doesn't go to infinity
+            overdue_ratio = gap / expected_gap
+            if overdue_ratio > 1.5:
+                # Boost increases with gap but caps out
+                boost = min(0.08 * np.log(overdue_ratio), 0.25)
+                number_scores[n]['overdue_boost'] = boost
+            
+            number_scores[n]['base_prob'] = max(number_scores[n]['base_prob'], base)
+            number_scores[n]['sources'].append(f'💤 Ritardatario ({gap} giri)')
+        
+        # --- Source 3: Sector Bias ---
+        sector_numbers_map = {
+            'voisins': VOISINS_DU_ZERO,
+            'tiers': TIERS_DU_CYLINDRE,
+            'orphelins': ORPHELINS,
+        }
+        sector_labels = {
+            'voisins': '🎡 Voisins du Zero',
+            'tiers': '🎡 Tiers du Cylindre',
+            'orphelins': '🎡 Orphelins',
+        }
+        
+        for sector_name, data in sector_bias.get('sectors', {}).items():
+            if data.get('deviation', 0) > 1.0:  # Hot sector
+                sector_nums = sector_numbers_map.get(sector_name, [])
+                sector_label = sector_labels.get(sector_name, sector_name)
+                for n in sector_nums:
+                    if n not in number_scores:
+                        number_scores[n] = {'sources': [], 'base_prob': 0, 'overdue_boost': 0}
+                    prob = data.get('actual', 0) * 0.5  # Scale sector probability
+                    number_scores[n]['base_prob'] = max(number_scores[n]['base_prob'], prob)
+                    # Avoid duplicate sector source
+                    if not any(sector_name in s for s in number_scores[n]['sources']):
+                        number_scores[n]['sources'].append(sector_label)
+        
+        # --- Source 4: Check if numbers are also in cold/sleeper AND hot sector (cross-pattern) ---
+        # Numbers that are both sleeper AND in a hot sector get an extra source
+        for n, data in number_scores.items():
+            has_sleeper = any('Ritardatario' in s for s in data['sources'])
+            has_sector = any('🎡' in s for s in data['sources'])
+            if has_sleeper and has_sector:
+                data['sources'].append('⚡ Cross-Pattern')
+        
+        # --- Build final predictions ---
+        predictions = []
+        for n, data in number_scores.items():
+            if not data['sources']:
+                continue
+            
+            final_prob = data['base_prob'] + data['overdue_boost']
+            final_prob = min(final_prob, 0.5)  # Cap at 50%
+            
+            agreement = len(data['sources']) / TOTAL_SOURCES
+            
+            predictions.append({
+                'type': 'number',
+                'value': n,
+                'label': f'Numero {n}',
+                'probability': round(final_prob, 4),
+                'overdue_boost': round(data['overdue_boost'], 4),
+                'base_probability': round(data['base_prob'], 4),
+                'sources': data['sources'],
+                'source_count': len(data['sources']),
+                'agreement': round(min(agreement, 1.0), 4),
+                'description': ' + '.join(data['sources']),
+            })
+        
+        # --- Area/Streak Predictions ---
+        for pattern_type, streak in streaks.get('current_streaks', {}).items():
+            if streak.get('length', 0) >= 3:
+                # Active streak = predict continuation
+                prob = min(0.35 + streak['length'] * 0.03, 0.65)
+                
+                label_map = {
+                    'color': 'Colore',
+                    'dozen': 'Dozzina',
+                    'column': 'Colonna',
+                    'parity': 'Pari/Dispari',
+                    'high_low': 'Alto/Basso',
+                }
+                
+                value_map = {
+                    'red': 'Rosso', 'black': 'Nero',
+                    'first': '1ª', 'second': '2ª', 'third': '3ª',
+                    'even': 'Pari', 'odd': 'Dispari',
+                    'high': 'Alto', 'low': 'Basso',
+                }
+                
+                friendly_value = value_map.get(streak['value'], streak['value'])
+                
+                predictions.append({
+                    'type': 'streak',
+                    'value': friendly_value,
+                    'label': label_map.get(pattern_type, pattern_type),
+                    'probability': round(prob, 4),
+                    'overdue_boost': 0,
+                    'base_probability': round(prob, 4),
+                    'sources': [f'🌊 Serie di {streak["length"]}'],
+                    'source_count': 1,
+                    'agreement': round(1 / TOTAL_SOURCES, 4),
+                    'description': f'{friendly_value} - {streak["length"]} di fila',
+                })
+        
+        # --- Classic Category Overdue Boost ---
+        # For each category type, check how many spins since each value last appeared.
+        # If overdue (gap > threshold), create a prediction with boost.
+        category_configs = {
+            'color': {
+                'values': {'red': RED_NUMBERS, 'black': [n for n in range(1, TOTAL_NUMBERS) if n not in RED_NUMBERS and n != 0]},
+                'expected_gap': TOTAL_NUMBERS / 18,   # ~2.06 spins
+                'overdue_mult': 3.0,                  # overdue if gap > 6 spins
+                'label': 'Colore',
+                'friendly': {'red': 'Rosso 🔴', 'black': 'Nero ⚫'},
+                'icon': '🎨',
+            },
+            'dozen': {
+                'values': {'1ª Dozzina': DOZEN_1, '2ª Dozzina': DOZEN_2, '3ª Dozzina': DOZEN_3},
+                'expected_gap': TOTAL_NUMBERS / 12,   # ~3.08 spins
+                'overdue_mult': 3.0,                  # overdue if gap > 9 spins
+                'label': 'Dozzina',
+                'friendly': {'1ª Dozzina': '1ª (1-12)', '2ª Dozzina': '2ª (13-24)', '3ª Dozzina': '3ª (25-36)'},
+                'icon': '📊',
+            },
+            'column': {
+                'values': {'1ª Colonna': COLUMN_1, '2ª Colonna': COLUMN_2, '3ª Colonna': COLUMN_3},
+                'expected_gap': TOTAL_NUMBERS / 12,
+                'overdue_mult': 3.0,
+                'label': 'Colonna',
+                'friendly': {'1ª Colonna': '1ª Col.', '2ª Colonna': '2ª Col.', '3ª Colonna': '3ª Col.'},
+                'icon': '📊',
+            },
+            'parity': {
+                'values': {'even': EVEN_NUMBERS, 'odd': ODD_NUMBERS},
+                'expected_gap': TOTAL_NUMBERS / 18,
+                'overdue_mult': 3.0,
+                'label': 'Pari/Dispari',
+                'friendly': {'even': 'Pari', 'odd': 'Dispari'},
+                'icon': '🔢',
+            },
+            'high_low': {
+                'values': {'high': HIGH_NUMBERS, 'low': LOW_NUMBERS},
+                'expected_gap': TOTAL_NUMBERS / 18,
+                'overdue_mult': 3.0,
+                'label': 'Alto/Basso',
+                'friendly': {'high': 'Alto (19-36)', 'low': 'Basso (1-18)'},
+                'icon': '↕️',
+            },
+        }
+        
+        for cat_name, cfg in category_configs.items():
+            for val_name, val_numbers in cfg['values'].items():
+                # Calculate gap: how many spins since any number in this category appeared
+                gap = 0
+                for spin in reversed(numbers):
+                    if spin in val_numbers:
+                        break
+                    gap += 1
+                else:
+                    gap = len(numbers)  # Never appeared
+                
+                expected = cfg['expected_gap']
+                threshold = expected * cfg['overdue_mult']
+                
+                if gap >= threshold:
+                    # Base probability for this category
+                    category_coverage = len(val_numbers) / TOTAL_NUMBERS
+                    base_prob = category_coverage
+                    
+                    # Overdue boost (logarithmic)
+                    overdue_ratio = gap / expected
+                    boost = min(0.10 * np.log(overdue_ratio), 0.30)
+                    
+                    final_prob = min(base_prob + boost, 0.85)
+                    friendly = cfg['friendly'].get(val_name, val_name)
+                    
+                    sources = [f'⏰ Ritardo {gap} giri']
+                    
+                    # Check if there's also a streak of the opposite value
+                    for pattern_type, streak in streaks.get('current_streaks', {}).items():
+                        if pattern_type == cat_name and streak.get('value') != val_name and streak.get('length', 0) >= 3:
+                            sources.append(f'🌊 Opposto in serie ({streak["length"]})')
+                    
+                    predictions.append({
+                        'type': 'category',
+                        'value': friendly,
+                        'label': cfg['label'],
+                        'probability': round(final_prob, 4),
+                        'overdue_boost': round(boost, 4),
+                        'base_probability': round(base_prob, 4),
+                        'sources': sources,
+                        'source_count': len(sources),
+                        'agreement': round(len(sources) / TOTAL_SOURCES, 4),
+                        'description': f'{friendly} — non esce da {gap} giri',
+                    })
+        
+        # Sort by final probability descending
+        predictions.sort(key=lambda x: -x['probability'])
+        
+        return predictions[:20]  # Top 20
 
 
 # Singleton

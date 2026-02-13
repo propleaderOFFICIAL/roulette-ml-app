@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 /**
- * Carica 110 numeri casuali (roulette 0-36) nell'API per test completi.
- * Seed fisso 42 = stessa sequenza ogni volta.
+ * Carica gli ultimi numeri (roulette 0-36) nell'API.
+ * Ordine: dal più vecchio al più recente.
  * Uso: node scripts/load-50-spins.mjs [URL_API]
  */
 
 const API_BASE = (process.env.API_URL || process.argv[2] || 'http://localhost:8000').replace(/\/$/, '');
 
-// 110 numeri casuali (seed 42), ordine dal più vecchio al più recente
+// Last Results: 50 numeri, 5 righe x 10. Ordine dal più vecchio al più recente (9 = ultimo).
 const NUMBERS = [
-  7, 1, 17, 15, 14, 8, 6, 34, 5, 27, 2, 1, 5, 13, 14, 32, 1, 35, 12, 34, 26, 14, 28, 17, 0, 10, 27, 21, 17, 9, 13, 21, 6, 5, 24, 6, 22, 22, 16, 2, 29, 34, 7, 24, 5, 35, 18, 23, 36, 12, 4, 2, 14, 18, 5, 14, 6, 24, 17, 29, 23, 10, 23, 22, 13, 17, 4, 10, 34, 15, 10, 29, 24, 17, 35, 14, 20, 3, 14, 2, 20, 25, 17, 4, 13, 36, 20, 13, 31, 25, 29, 9, 16, 8, 15, 35, 34, 16, 27, 25, 23, 14, 8, 32, 31, 5, 3, 7, 9, 10,
+  17, 31, 25, 17, 32, 32, 24, 30, 23, 32,
+  2, 28, 34, 16, 13, 0, 19, 30, 29, 2,
+  15, 30, 18, 11, 2, 26, 1, 9, 13, 7,
+  32, 17, 33, 31, 1, 23, 12, 28, 21, 19,
+  14, 0, 28, 23, 11, 32, 8, 28, 0, 9,
 ];
 
 async function main() {

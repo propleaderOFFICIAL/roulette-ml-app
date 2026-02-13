@@ -181,7 +181,7 @@ export function StatisticsPanel({ data, loading, error }: Props) {
                 </div>
 
                 <div style={{ marginTop: '1.5rem' }}>
-                    {['red', 'black', 'green'].map((color) => (
+                    {['red', 'black'].map((color) => (
                         <div key={color} className="prob-row-capsule">
                             <div className="capsule-dot" style={{ backgroundColor: getColorHex(color), color: getColorHex(color) }}></div>
                             <span className="capsule-label" style={{
@@ -265,7 +265,7 @@ export function StatisticsPanel({ data, loading, error }: Props) {
 
                 {stats.monte_carlo.color.simulated_probabilities && (
                     <div style={{ display: 'grid', gap: '1rem' }}>
-                        {['red', 'black', 'green'].map((color) => (
+                        {['red', 'black'].map((color) => (
                             <div key={color} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-lg)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                     <span className="capsule-label" style={{ color: getColorHex(color) }}>{color.toUpperCase()}</span>

@@ -16,17 +16,17 @@ import { SpinInput } from './components/SpinInput';
 import { SpinHistory } from './components/SpinHistory';
 import { AdvancedPredictions } from './components/AdvancedPredictions';
 import { PatternAnalysis } from './components/PatternAnalysis';
-import { QuickAIAdvice } from './components/QuickAIAdvice';
 import { WheelAnalysis } from './components/WheelAnalysis';
+import { ProbabilitySummary } from './components/ProbabilitySummary';
 import { StatisticsPanel } from './components/StatisticsPanel';
 import { AIStatisticsSection } from './components/AIStatisticsSection';
 import { RouletteTableVisualization } from './components/RouletteTableVisualization';
 import { ModelStatusHero } from './components/ModelStatusHero';
 
-type Tab = 'previsioni' | 'tavolo' | 'statistiche' | 'pattern' | 'storico';
+type Tab = 'riepilogo' | 'previsioni' | 'tavolo' | 'statistiche' | 'pattern' | 'storico';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('previsioni');
+  const [activeTab, setActiveTab] = useState<Tab>('riepilogo');
   const [spins, setSpins] = useState<{ spins: Array<{ number: number; color: string; timestamp: string }>; total: number }>({ spins: [], total: 0 });
   const [clearing, setClearing] = useState(false);
 
@@ -54,8 +54,10 @@ function App() {
     setErrorAdvanced(null);
     setErrorPatterns(null);
     setErrorStats(null);
+    setErrorWheel(null);
 
     try {
+      // 1. Fetch spins first (fast & essential)
       const spinsRes = await getSpins(100);
       setSpins(spinsRes);
     } catch {
@@ -63,40 +65,36 @@ function App() {
       setLoadingAdvanced(false);
       setLoadingPatterns(false);
       setLoadingStats(false);
+      setLoadingWheel(false);
       return;
     }
 
-    try {
-      const advRes = await getAdvancedPredictions();
-      setAdvancedPreds(advRes);
-    } catch {
-      setErrorAdvanced('Impossibile caricare predizioni avanzate');
-    }
-    setLoadingAdvanced(false);
+    // 2. Fire other requests in parallel (independent loading states)
 
-    try {
-      const patRes = await getPatternAnalysis();
-      setPatterns(patRes);
-    } catch {
-      setErrorPatterns('Impossibile caricare analisi pattern');
-    }
-    setLoadingPatterns(false);
+    // Advanced Predictions (AI Ensemble - Slowest)
+    getAdvancedPredictions()
+      .then(res => setAdvancedPreds(res))
+      .catch(() => setErrorAdvanced('Impossibile caricare predizioni avanzate'))
+      .finally(() => setLoadingAdvanced(false));
 
-    try {
-      const statsRes = await getStatisticalAnalysis();
-      setStatistics(statsRes);
-    } catch {
-      setErrorStats('Impossibile caricare analisi statistica');
-    }
+    // Pattern Analysis
+    getPatternAnalysis()
+      .then(res => setPatterns(res))
+      .catch(() => setErrorPatterns('Impossibile caricare analisi pattern'))
+      .finally(() => setLoadingPatterns(false));
 
-    try {
-      const wheelRes = await getWheelClustering();
-      setWheelClustering(wheelRes);
-    } catch {
-      setErrorWheel('Impossibile caricare analisi ruota');
-    }
-    setLoadingWheel(false);
-    setLoadingStats(false);
+    // Statistical Analysis
+    getStatisticalAnalysis()
+      .then(res => setStatistics(res))
+      .catch(() => setErrorStats('Impossibile caricare analisi statistica'))
+      .finally(() => setLoadingStats(false));
+
+    // Wheel Analysis
+    getWheelClustering()
+      .then(res => setWheelClustering(res))
+      .catch(() => setErrorWheel('Impossibile caricare analisi ruota'))
+      .finally(() => setLoadingWheel(false));
+
   }, []);
 
   useEffect(() => {
@@ -172,16 +170,15 @@ function App() {
 
       <SpinInput onSpinAdded={onSpinAdded} lastSpin={lastSpin} />
 
-      {/* QUICK AI ADVICE - SEMPRE VISIBILE */}
-      <QuickAIAdvice
-        predictions={advancedPreds}
-        patterns={patterns}
-        wheelAnalysis={wheelClustering}
-        loading={loadingPatterns || loadingAdvanced || loadingWheel}
-      />
-
       {/* Tab Navigation: Previsioni | Statistiche */}
       <nav className="tab-nav">
+        <button
+          className={`tab-btn ${activeTab === 'riepilogo' ? 'active' : ''}`}
+          onClick={() => setActiveTab('riepilogo')}
+        >
+          <span className="tab-icon">💎</span>
+          Riepilogo
+        </button>
         <button
           className={`tab-btn ${activeTab === 'previsioni' ? 'active' : ''}`}
           onClick={() => setActiveTab('previsioni')}
@@ -221,11 +218,22 @@ function App() {
 
       {/* Tab Content */}
       <main className="tab-content">
+        {activeTab === 'riepilogo' && (
+          <div className="page-riepilogo">
+            <ProbabilitySummary
+              data={advancedPreds}
+              patternData={patterns}
+              loading={loadingAdvanced}
+            />
+          </div>
+        )}
+
         {activeTab === 'previsioni' && (
           <div className="page-predictions">
             <section className="predictions-block">
               <AdvancedPredictions
                 data={advancedPreds}
+                patternData={patterns}
                 loading={loadingAdvanced}
                 error={errorAdvanced}
                 onRetry={refresh}

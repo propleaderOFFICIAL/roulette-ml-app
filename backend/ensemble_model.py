@@ -11,10 +11,18 @@ Multi-model ensemble combining:
 Uses soft voting with confidence scoring and model performance tracking.
 """
 
+import warnings
 import numpy as np
 from typing import Optional, Dict, List, Tuple, Any
 from collections import deque
 from datetime import datetime
+
+# Sopprime il warning sklearn "unique classes > 50% of samples": roulette = 37 classi, pochi spin.
+warnings.filterwarnings(
+    "ignore",
+    message="The number of unique classes is greater than 50% of the number of samples",
+    category=UserWarning,
+)
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -493,12 +501,8 @@ class SequenceAwarePredictor(BasePredictor):
         # Apply weighted transformation
         X_weighted = X * weights
         
-        # Add rolling statistics as additional features
-        if X.shape[0] > 1:
-            X_diff = np.diff(X, axis=0, prepend=X[:1])
-            X_enhanced = np.hstack([X, X_weighted, X_diff])
-        else:
-            X_enhanced = np.hstack([X, X_weighted])
+        # Consistent shape for training and prediction (removed X_diff to avoid mismatch)
+        X_enhanced = np.hstack([X, X_weighted])
         
         return X_enhanced
         
@@ -819,7 +823,7 @@ class EnsembleRoulettePredictor:
         
         Returns:
             {
-                'ensemble': {'red': 0.45, 'black': 0.52, 'green': 0.03},
+                'ensemble': {'red': 0.47, 'black': 0.53},
                 'confidence': 0.72,
                 'models': {
                     'DeepMLP': {'red': 0.44, ...},
@@ -851,28 +855,41 @@ class EnsembleRoulettePredictor:
         if not valid_predictions:
             return None
         
-        # Weighted ensemble
-        ensemble = {'red': 0.0, 'black': 0.0, 'green': 0.0}
+        # Weighted ensemble (only red/black — green/0 is a number, not a color bet)
+        raw_ensemble = {'red': 0.0, 'black': 0.0, 'green': 0.0}
         total_weight = 0.0
         
         for name, probs in valid_predictions:
             weight = self.model_weights.get(name, 0.25)
-            for color in ensemble:
-                ensemble[color] += probs.get(color, 0) * weight
+            for color in raw_ensemble:
+                raw_ensemble[color] += probs.get(color, 0) * weight
             total_weight += weight
         
-        # Normalize
-        for color in ensemble:
-            ensemble[color] /= max(total_weight, 1e-6)
+        # Normalize raw
+        for color in raw_ensemble:
+            raw_ensemble[color] /= max(total_weight, 1e-6)
+        
+        # Redistribute green probability proportionally to red/black
+        green_prob = raw_ensemble.get('green', 0.0)
+        rb_total = raw_ensemble['red'] + raw_ensemble['black']
+        if rb_total > 0:
+            ensemble = {
+                'red': raw_ensemble['red'] + green_prob * (raw_ensemble['red'] / rb_total),
+                'black': raw_ensemble['black'] + green_prob * (raw_ensemble['black'] / rb_total),
+            }
+        else:
+            ensemble = {'red': 0.5, 'black': 0.5}
         
         # Calculate confidence (max probability)
         confidence = max(ensemble.values())
         
         # Calculate agreement (how many models agree on top prediction)
+        # For agreement, compare only red vs black per model
         top_color = max(ensemble, key=ensemble.get)
         agreements = sum(
-            1 for _, probs in valid_predictions 
-            if max(probs, key=probs.get) == top_color
+            1 for _, probs in valid_predictions
+            if max({'red': probs.get('red', 0), 'black': probs.get('black', 0)},
+                   key=lambda c: {'red': probs.get('red', 0), 'black': probs.get('black', 0)}[c]) == top_color
         )
         agreement = agreements / len(valid_predictions)
         
@@ -1026,11 +1043,24 @@ class EnsembleRoulettePredictor:
                 if n % 2 == 0: parity['Pari'] += prob
                 else: parity['Dispari'] += prob
             
+            # Sectors (European wheel layout)
+            voisins_nums = {0, 2, 3, 4, 7, 12, 15, 18, 19, 21, 22, 25, 26, 28, 29, 32, 35}
+            tiers_nums = {5, 8, 10, 11, 13, 16, 23, 24, 27, 30, 33, 36}
+            orphelins_nums = {1, 6, 9, 14, 17, 20, 31, 34}
+            
+            sectors = {'Voisins': 0.0, 'Tiers': 0.0, 'Orphelins': 0.0}
+            for n in range(0, 37):
+                p = num_probs[n]
+                if n in voisins_nums: sectors['Voisins'] += p
+                elif n in tiers_nums: sectors['Tiers'] += p
+                elif n in orphelins_nums: sectors['Orphelins'] += p
+            
             return {
                 'dozen': get_prediction(dozens),
                 'column': get_prediction(columns),
                 'high_low': get_prediction(high_low),
                 'parity': get_prediction(parity),
+                'sector': get_prediction(sectors),
                 'zero_probability': zero_prob
             }
 
@@ -1045,7 +1075,7 @@ class EnsembleRoulettePredictor:
             model_area_predictions[model_name] = calculate_area_probs(model_probs_list)
 
         # 3. Calculate agreement for each area type
-        area_types = ['dozen', 'column', 'high_low', 'parity']
+        area_types = ['dozen', 'column', 'high_low', 'parity', 'sector']
         for area_type in area_types:
             top_pred = ensemble_area_predictions[area_type]['prediction']
             

@@ -1,0 +1,189 @@
+/* ══════════════════════════════════════════
+   RIEPILOGO – Premium Summary Cards
+   ══════════════════════════════════════════ */
+
+.riepilogo-container {
+    padding: 0;
+}
+
+/* ── Header ── */
+.riepilogo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.riepilogo-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #f0f0f5;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.riepilogo-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ── Grid ── */
+.riepilogo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 0.9rem;
+}
+
+@media (min-width: 600px) {
+    .riepilogo-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+}
+
+/* ── Card ── */
+.riepilogo-card {
+    --card-accent: #8b5cf6;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0.7rem 0.8rem;
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(30, 27, 55, 0.95), rgba(20, 18, 40, 0.98));
+    border: 1.5px solid color-mix(in srgb, var(--card-accent) 35%, transparent);
+    box-shadow:
+        0 0 20px color-mix(in srgb, var(--card-accent) 10%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+    cursor: default;
+}
+
+.riepilogo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 0%,
+            color-mix(in srgb, var(--card-accent) 8%, transparent) 0%,
+            transparent 65%);
+    pointer-events: none;
+}
+
+.riepilogo-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 30px color-mix(in srgb, var(--card-accent) 20%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ── Category label ── */
+.rc-category {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+}
+
+.rc-icon {
+    font-size: 0.85rem;
+}
+
+.rc-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Value ── */
+.rc-value {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #f0f0f5;
+    line-height: 1.1;
+    text-align: center;
+    margin-bottom: 0.25rem;
+    word-break: break-word;
+}
+
+/* ── Confidence ── */
+.rc-confidence {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--card-accent);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--card-accent) 30%, transparent);
+    margin-bottom: 0.4rem;
+}
+
+/* ── Agreement bar ── */
+.rc-agreement {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0 0.2rem;
+}
+
+.rc-agree-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.rc-agree-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--card-accent);
+    transition: width 0.6s ease;
+}
+
+.rc-agree-text {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+}
+
+/* ── Empty state ── */
+.riepilogo-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.riepilogo-empty .icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.riepilogo-empty h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 0.3rem;
+}
+
+.riepilogo-empty p {
+    font-size: 0.8rem;
+    margin: 0;
+    max-width: 320px;
+    margin-inline: auto;
+}
