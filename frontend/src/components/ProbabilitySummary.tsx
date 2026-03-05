@@ -34,7 +34,7 @@ interface SummaryCard {
     accentColor: string;    // border & glow color
 }
 
-export function ProbabilitySummary({ data, patternData, loading }: Props) {
+export function ProbabilitySummary({ data, loading }: Props) {
     if (loading) {
         return (
             <div className="riepilogo-container">

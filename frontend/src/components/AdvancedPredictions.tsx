@@ -14,9 +14,7 @@ const colorMap: Record<string, string> = {
     green: '#22c55e',
 };
 
-const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-
-export function AdvancedPredictions({ data, patternData, loading, error, onRetry }: Props) {
+export function AdvancedPredictions({ data, loading, error, onRetry }: Props) {
     if (loading) {
         return (
             <div className="card loading-state">
