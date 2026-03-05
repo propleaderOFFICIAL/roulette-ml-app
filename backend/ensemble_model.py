@@ -588,8 +588,18 @@ class XGBoostPredictor(BasePredictor):
         try:
             X_scaled = self.scaler.fit_transform(X)
             y_color_enc = self.color_encoder.transform(y_color)
-            
-            # Color model
+
+            # Color model: ensure all 3 classes (black=0, green=1, red=2) are always
+            # present in training data. If e.g. green never appeared, XGBoost would
+            # see classes [0, 2] and crash with "Expected: [0 1], got [0 2]".
+            last_row = X_scaled[-1:].copy()
+            X_color_prior = np.tile(last_row, (3, 1))
+            y_color_prior = np.array([0, 1, 2], dtype=np.int64)
+            X_color_full = np.vstack([X_scaled, X_color_prior])
+            y_color_full = np.concatenate([y_color_enc, y_color_prior])
+            w_real_color = np.ones(len(y_color_enc), dtype=np.float64)
+            w_prior_color = np.full(3, 1e-6, dtype=np.float64)
+            sample_weight_color = np.concatenate([w_real_color, w_prior_color])
             self.color_model = xgb.XGBClassifier(
                 n_estimators=200,
                 learning_rate=0.1,
@@ -599,8 +609,9 @@ class XGBoostPredictor(BasePredictor):
                 colsample_bytree=0.8,
                 random_state=42,
                 eval_metric='mlogloss',
+                num_class=3,
             )
-            self.color_model.fit(X_scaled, y_color_enc)
+            self.color_model.fit(X_color_full, y_color_full, sample_weight=sample_weight_color)
             
             # Number model: 37 classi fisse (roulette europea 0-36).
             # Lo sklearn wrapper inferisce num_class da np.unique(y): se nei dati mancano

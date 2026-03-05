@@ -465,15 +465,6 @@ async def get_model_info():
     }
 
 
-@app.delete("/spins")
-async def clear_spins():
-    """Clear all recorded spins (for testing)."""
-    global spins_store
-    spins_store = []
-    save_spins()
-    return {"message": "All spins cleared", "total_spins": 0}
-
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
