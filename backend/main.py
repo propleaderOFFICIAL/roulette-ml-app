@@ -9,15 +9,19 @@ Advanced features:
 - Model performance tracking
 """
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 import json
 from typing import Optional, Any
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+_executor = ThreadPoolExecutor(max_workers=1)
 
 import roulette
 from model import get_predictor
@@ -70,19 +74,12 @@ def save_spins() -> None:
 
 
 @app.on_event("startup")
-def startup():
+async def startup():
     load_spins()
     numbers = [s["number"] for s in spins_store]
-    
-    # Train legacy predictor
-    predictor = get_predictor()
     if len(numbers) >= 15:
-        predictor.ensure_trained(numbers)
-    
-    # Train advanced ensemble predictor
-    ensemble = get_ensemble_predictor()
-    if len(numbers) >= 30:
-        ensemble.ensure_trained(numbers)
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(_executor, _train_models, numbers)
 
 
 class SpinRequest(BaseModel):
@@ -113,8 +110,22 @@ async def root():
     }
 
 
+def _train_models(numbers: list) -> None:
+    """Train all models in background thread."""
+    try:
+        predictor = get_predictor()
+        predictor.ensure_trained(numbers)
+    except Exception as e:
+        print(f"Legacy predictor training error: {e}")
+    try:
+        ensemble = get_ensemble_predictor()
+        ensemble.ensure_trained(numbers)
+    except Exception as e:
+        print(f"Ensemble training error: {e}")
+
+
 @app.post("/spins", response_model=SpinResponse)
-async def add_spin(req: SpinRequest):
+async def add_spin(req: SpinRequest, background_tasks: BackgroundTasks):
     """Record a spin (number 0-36)."""
     color = roulette.number_to_color(req.number)
     entry = {
@@ -124,16 +135,15 @@ async def add_spin(req: SpinRequest):
     }
     spins_store.append(entry)
     save_spins()
-    
-    # Train predictors
+
     numbers = [s["number"] for s in spins_store]
-    
-    predictor = get_predictor()
-    predictor.ensure_trained(numbers)
-    
-    ensemble = get_ensemble_predictor()
-    ensemble.ensure_trained(numbers)
-    
+    background_tasks.add_task(
+        asyncio.get_event_loop().run_in_executor,
+        _executor,
+        _train_models,
+        numbers,
+    )
+
     return SpinResponse(
         number=req.number,
         color=color,
